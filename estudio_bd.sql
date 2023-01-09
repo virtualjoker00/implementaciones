@@ -1,5 +1,38 @@
 -- repaso bases de datos
 
+-- POSTGRESQL EJEMPLO (porque no tiene auto increment)
+
+CREATE TABLE usuarios (
+    id serial PRIMARY KEY,
+    nombre varchar(255),
+    email varchar(255),
+    password varchar(255),
+    fecha_nacimiento date,
+    fecha_creacion date,
+    fecha_modificacion date
+);
+
+-- tabla con todos los tipos de datos en postgresql
+
+CREATE TABLE tipos_datos (
+    id serial PRIMARY KEY,
+    nombre varchar(255),
+    email varchar(255),
+    password varchar(255),
+    fecha_nacimiento date,
+    fecha_creacion date,
+    fecha_modificacion date,
+    numero_entero int,
+    numero_entero_grande bigint,
+    numero_decimal decimal,
+    numero_decimal_grande numeric,
+    numero_decimal_grande2 decimal(10,2)
+);
+   
+
+
+
+
 -- 1. Crear una tabla llamada "usuarios" con los siguientes campos:
 -- id (entero, autoincremental, clave primaria)
 -- nombre (cadena de texto)
@@ -290,4 +323,239 @@ SELECT * FROM mensajes ORDER BY fecha_creacion ASC LIMIT 10;
 -- 16. Obtener los 5 usuarios con mas cantidad de publicaciones del año 2019
 
 SELECT usuarios.id, usuarios.nombre, usuarios.apellido, COUNT(usuarios_mensajes.id) AS cantidad_mensajes FROM usuarios LEFT JOIN usuarios_mensajes ON usuarios.id = usuarios_mensajes.usuario_id WHERE usuarios_mensajes.id IS NOT NULL AND YEAR(mensajes.fecha_creacion) = 2019 GROUP BY usuarios.id ORDER BY cantidad_mensajes DESC LIMIT 5;
+
+------------------------------------------------------------------------------------------------------
+-- Show patient_id, attending_doctor_id, and diagnosis for admissions that match one of the two criteria:
+-- 1. patient_id is an odd number and attending_doctor_id is either 1, 5, or 19.
+-- 2. attending_doctor_id contains a 2 and the length of patient_id is 3 characters
+
+SELECT patient_id, attending_doctor_id, diagnosis 
+FROM admissions 
+WHERE (patient_id % 2 = 1 AND attending_doctor_id IN (1, 5, 19)) OR (attending_doctor_id LIKE "%2%" AND LENGTH(patient_id) = 3);
+
+-- Display the total amount of patients for each province. Order by descending
+
+SELECT province_name, COUNT(*) AS total_count FROM patients GROUP BY province_name ORDER BY total_count DESC;
+
+-- Show the difference between the largest weight and smallest weight for patients with the last name 'Maroni'
+
+SELECT MAX(weight) - MIN(weight) AS weight_difference FROM patients WHERE last_name = "Maroni";
+
+-- Each admission costs $50 for patients without insurance, and $10 for patients with insurance. All patients with an even 
+-- patient_id have insurance.
+-- Give each patient a 'Yes' if they have insurance, and a 'No' if they don't have insurance. Add up the admission_total cost 
+-- for each has_insurance group
+
+SELECT CASE WHEN patient_id % 2 = 0 THEN "Yes" ELSE "No" END AS has_insurance, 
+SUM(CASE WHEN patient_id % 2 = 0 THEN 10 ELSE 50 END) AS admission_total 
+FROM admissions GROUP BY has_insurance;
+
+-- Show the average weight for each province. Order by descending
+
+SELECT province_name, AVG(weight) AS average_weight FROM patients GROUP BY province_name ORDER BY average_weight DESC;
+
+------------------------------------------------------------------------------------------------------
+
+-- Campeonato mundial de futbol, incluye paises, jugadores, partidos, goles, ediciones, ganadores, etc.
+
+-- Tablas de la base de datos
+
+CREATE TABLE paises (
+    id INT NOT NULL AUTO_INCREMENT,
+    nombre VARCHAR(50) NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE jugadores (
+    id INT NOT NULL AUTO_INCREMENT,
+    nombre VARCHAR(50) NOT NULL,
+    apellido VARCHAR(50) NOT NULL,
+    pais_id INT NOT NULL,
+    PRIMARY KEY (id),
+    FOREIGN KEY (pais_id) REFERENCES paises(id)
+);
+
+CREATE TABLE partidos (
+    id INT NOT NULL AUTO_INCREMENT,
+    pais1_id INT NOT NULL,
+    pais2_id INT NOT NULL,
+    minutos INT NOT NULL,
+    fecha DATE NOT NULL,
+    PRIMARY KEY (id),
+    FOREIGN KEY (pais1_id) REFERENCES paises(id),
+    FOREIGN KEY (pais2_id) REFERENCES paises(id)
+);
+
+CREATE TABLE goles (
+    id INT NOT NULL AUTO_INCREMENT,
+    partido_id INT NOT NULL,
+    jugador_id INT NOT NULL,
+    PRIMARY KEY (id),
+    FOREIGN KEY (partido_id) REFERENCES partidos(id),
+    FOREIGN KEY (jugador_id) REFERENCES jugadores(id)
+);
+
+CREATE TABLE ediciones (
+    id INT NOT NULL AUTO_INCREMENT,
+    anio INT NOT NULL,
+    PRIMARY KEY (id),
+    FOREIGN KEY (pais_id) REFERENCES paises(id)
+);
+
+CREATE TABLE partidos_ediciones (
+    id INT NOT NULL AUTO_INCREMENT,
+    partido_id INT NOT NULL,
+    edicion_id INT NOT NULL,
+    PRIMARY KEY (id),
+    FOREIGN KEY (partido_id) REFERENCES partidos(id),
+    FOREIGN KEY (edicion_id) REFERENCES ediciones(id)
+);
+
+CREATE TABLE ganadores (
+    id INT NOT NULL AUTO_INCREMENT,
+    edicion_id INT NOT NULL,
+    pais_id INT NOT NULL,
+    PRIMARY KEY (id),
+    FOREIGN KEY (edicion_id) REFERENCES ediciones(id),
+    FOREIGN KEY (pais_id) REFERENCES paises(id)
+);
+
+-- 1. Obtener el nombre de los jugadores que hayan marcado al menos 3 goles
+
+SELECT jugadores.nombre, jugadores.apellido, COUNT(goles.id) AS cantidad_goles 
+FROM jugadores 
+INNER JOIN goles ON jugadores.id = goles.jugador_id
+GROUP BY jugadores.id
+HAVING COUNT(goles.id) >= 3;
+
+-- 2. Obtener el nombre de los jugadores que hayan marcado al menos 3 goles en la edición 2018
+
+SELECT jugadores.nombre, jugadores.apellido, COUNT(goles.id) AS cantidad_goles
+FROM jugadores
+INNER JOIN goles ON jugadores.id = goles.jugador_id
+INNER JOIN partidos_ediciones ON goles.partido_id = partidos_ediciones.partido_id
+INNER JOIN ediciones ON partidos_ediciones.edicion_id = ediciones.id
+WHERE ediciones.anio = 2018
+
+-- 3. Obtener el nombre de los jugadores que hayan marcado al menos 3 goles en la edición 2018 y que su apellido sea 'Messi'
+
+SELECT jugadores.nombre, jugadores.apellido, COUNT(goles.id) AS cantidad_goles
+FROM jugadores
+INNER JOIN goles ON jugadores.id = goles.jugador_id
+INNER JOIN partidos_ediciones ON goles.partido_id = partidos_ediciones.partido_id
+INNER JOIN ediciones ON partidos_ediciones.edicion_id = ediciones.id
+WHERE ediciones.anio = 2018 AND jugadores.apellido = 'Messi'
+
+-- 4. Obtener el nombre de los jugadores que hayan marcado al menos 3 goles en la edición 2018 y que su apellido sea 'Messi' o 'Ronaldo'
+
+SELECT jugadores.nombre, jugadores.apellido, COUNT(goles.id) AS cantidad_goles
+FROM jugadores
+INNER JOIN goles ON jugadores.id = goles.jugador_id
+INNER JOIN partidos_ediciones ON goles.partido_id = partidos_ediciones.partido_id
+INNER JOIN ediciones ON partidos_ediciones.edicion_id = ediciones.id
+WHERE ediciones.anio = 2018 AND jugadores.apellido IN ('Messi', 'Ronaldo')
+
+-- 5. Obtener el nombre de los jugadores que hayan marcado al menos 3 goles en la edición 2018 y que su apellido sea 'Messi' o 'Ronaldo' y que su nombre sea 'Lionel' o 'Cristiano'
+
+SELECT jugadores.nombre, jugadores.apellido, COUNT(goles.id) AS cantidad_goles
+FROM jugadores
+INNER JOIN goles ON jugadores.id = goles.jugador_id
+INNER JOIN partidos_ediciones ON goles.partido_id = partidos_ediciones.partido_id
+INNER JOIN ediciones ON partidos_ediciones.edicion_id = ediciones.id
+WHERE ediciones.anio = 2018 AND jugadores.apellido IN ('Messi', 'Ronaldo') AND jugadores.nombre IN ('Lionel', 'Cristiano')
+
+-- 6. Obtener el nombre de los paises que hayan ganado al menos 3 ediciones
+
+SELECT paises.nombre, COUNT(ganadores.id) AS cantidad_ganadores
+FROM paises
+INNER JOIN ganadores ON paises.id = ganadores.pais_id
+GROUP BY paises.id
+HAVING COUNT(ganadores.id) >= 3
+
+-- 8. Obtener el pais que haya hecho la menor cantidad de goles en la edición 2018
+
+SELECT paises.nombre, COUNT(goles.id) AS cantidad_goles
+FROM paises
+INNER JOIN jugadores ON paises.id = jugadores.pais_id
+INNER JOIN goles ON jugadores.id = goles.jugador_id
+INNER JOIN partidos_ediciones ON goles.partido_id = partidos_ediciones.partido_id
+INNER JOIN ediciones ON partidos_ediciones.edicion_id = ediciones.id
+WHERE ediciones.anio = 2018
+GROUP BY paises.id
+ORDER BY cantidad_goles ASC
+LIMIT 1
+
+-- 9. El jugador que haya estado mas tiempo en los partidos de la edición 2018
+
+SELECT jugadores.nombre, jugadores.apellido, SUM(partidos.minutos) AS minutos_jugados
+FROM jugadores
+INNER JOIN partidos_jugadores ON jugadores.id = partidos_jugadores.jugador_id
+INNER JOIN partidos ON partidos_jugadores.partido_id = partidos.id
+INNER JOIN partidos_ediciones ON partidos.id = partidos_ediciones.partido_id
+INNER JOIN ediciones ON partidos_ediciones.edicion_id = ediciones.id
+WHERE ediciones.anio = 2018
+
+-- 10. La edicion que haya tenido mas goles en total y la cantidad de goles 
+
+SELECT ediciones.anio, COUNT(goles.id) AS cantidad_goles
+FROM ediciones
+INNER JOIN partidos_ediciones ON ediciones.id = partidos_ediciones.edicion_id
+INNER JOIN partidos ON partidos_ediciones.partido_id = partidos.id
+INNER JOIN goles ON partidos.id = goles.partido_id
+GROUP BY ediciones.id
+ORDER BY cantidad_goles DESC
+LIMIT 1
+
+-- 11. La edicion que haya tenido mas goles en total, la cantidad de goles y el pais que la haya ganado
+
+SELECT ediciones.anio, COUNT(goles.id) AS cantidad_goles, paises.nombre AS pais_ganador
+FROM ediciones
+INNER JOIN partidos_ediciones ON ediciones.id = partidos_ediciones.edicion_id
+INNER JOIN partidos ON partidos_ediciones.partido_id = partidos.id
+INNER JOIN goles ON partidos.id = goles.partido_id
+INNER JOIN ganadores ON ediciones.id = ganadores.edicion_id
+INNER JOIN paises ON ganadores.pais_id = paises.id
+GROUP BY ediciones.id
+ORDER BY cantidad_goles DESC
+LIMIT 1
+
+-- 12. La edicion que haya tenido mas goles en total, la cantidad de goles y el pais que la haya ganado y el jugador que haya marcado mas goles
+
+SELECT ediciones.anio, COUNT(goles.id) AS cantidad_goles, paises.nombre AS pais_ganador, jugadores.nombre, jugadores.apellido
+FROM ediciones
+INNER JOIN partidos_ediciones ON ediciones.id = partidos_ediciones.edicion_id
+INNER JOIN partidos ON partidos_ediciones.partido_id = partidos.id
+INNER JOIN goles ON partidos.id = goles.partido_id
+INNER JOIN ganadores ON ediciones.id = ganadores.edicion_id
+INNER JOIN paises ON ganadores.pais_id = paises.id
+INNER JOIN jugadores ON goles.jugador_id = jugadores.id
+GROUP BY ediciones.id
+ORDER BY cantidad_goles DESC
+LIMIT 1
+
+-- 13. de las personas que participaron en la edicion 2022, que jugador ha participado en mas ediciones y cuantas,  
+-- mostrar su nombre y apellido y el pais de cada edicion en la que participo
+
+SELECT jugadores.nombre, jugadores.apellido, COUNT(ediciones.id) AS cantidad_ediciones, paises.nombre AS pais
+FROM jugadores
+INNER JOIN partidos_jugadores ON jugadores.id = partidos_jugadores.jugador_id
+INNER JOIN partidos ON partidos_jugadores.partido_id = partidos.id
+INNER JOIN partidos_ediciones ON partidos.id = partidos_ediciones.partido_id
+INNER JOIN ediciones ON partidos_ediciones.edicion_id = ediciones.id
+INNER JOIN paises ON jugadores.pais_id = paises.id
+WHERE ediciones.anio = 2022
+GROUP BY jugadores.id
+ORDER BY cantidad_ediciones DESC
+LIMIT 1
+
+-- 14. el año del partido que haya tenido mas goles y la cantidad de goles que tuvo
+
+SELECT ediciones.anio, COUNT(goles.id) AS cantidad_goles
+FROM ediciones
+INNER JOIN partidos_ediciones ON ediciones.id = partidos_ediciones.edicion_id
+INNER JOIN partidos ON partidos_ediciones.partido_id = partidos.id
+INNER JOIN goles ON partidos.id = goles.partido_id
+GROUP BY ediciones.id
+ORDER BY cantidad_goles DESC
+LIMIT 1
 
